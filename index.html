@@ -1,0 +1,1847 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Klassekart</title>
+<style>
+  :root{
+    --ink:#0E2530;
+    --ink-soft:#4A6875;
+    --paper:#E6ECEE;
+    --card:#FFFFFF;
+    --line:#AEC3CB;
+    --line-soft:#D3DFE4;
+    --signal:#0B6E8F;
+    --alert:#C42348;
+    --lock:#B8830A;
+    --grid:rgba(14,37,48,.055);
+    --font-display:"Avenir Next Condensed","Avenir Next","Segoe UI",system-ui,sans-serif;
+    --font-body:"Avenir Next",Avenir,"Segoe UI",system-ui,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--font-body);color:var(--ink);background-color:var(--paper);
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:24px 24px;-webkit-text-size-adjust:100%;
+  }
+  h1,h2,h3{margin:0;font-family:var(--font-display);font-weight:600;letter-spacing:.02em}
+  button{font:inherit;color:inherit}
+
+  .topbar{
+    display:flex;flex-wrap:wrap;align-items:flex-end;gap:16px;
+    padding:18px 24px;border-bottom:1px solid var(--line);
+    background:rgba(255,255,255,.72);backdrop-filter:blur(6px);position:sticky;top:0;z-index:20;
+  }
+  .topbar h1{font-size:26px;text-transform:uppercase;letter-spacing:.12em;line-height:1}
+  .topbar .sub{font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);letter-spacing:.06em;margin-top:6px}
+  .topbar .actions{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+
+  .btn{
+    border:1px solid var(--ink);background:transparent;border-radius:2px;
+    padding:9px 14px;cursor:pointer;font-size:13px;letter-spacing:.03em;
+    transition:background .12s ease,color .12s ease;
+  }
+  .btn:hover{background:var(--ink);color:#fff}
+  .btn:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .btn--primary{background:var(--ink);color:#fff}
+  .btn--primary:hover{background:var(--signal);border-color:var(--signal)}
+  .btn--quiet{border-color:var(--line);color:var(--ink-soft);padding:6px 10px;font-size:12px}
+  .btn--quiet:hover{background:var(--ink-soft);color:#fff;border-color:var(--ink-soft)}
+  .btn--danger:hover{background:var(--alert);border-color:var(--alert);color:#fff}
+
+  .layout{display:flex;align-items:flex-start;gap:0}
+  .panel{
+    width:352px;flex:0 0 352px;border-right:1px solid var(--line);
+    padding:20px 22px 60px;background:rgba(255,255,255,.5);min-height:calc(100vh - 78px);
+  }
+  .stage{flex:1;padding:26px 30px 80px;min-width:0}
+
+  .block{border-top:1px solid var(--line-soft);padding:18px 0}
+  .block:first-child{border-top:0;padding-top:4px}
+  .block__title{
+    font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.14em;
+    color:var(--ink-soft);margin-bottom:12px;display:flex;align-items:baseline;gap:8px;
+  }
+  .block__title .count{margin-left:auto;color:var(--signal)}
+  label{display:block;font-size:13px;margin-bottom:5px;color:var(--ink-soft)}
+  textarea,input[type=text],input[type=number]{
+    width:100%;font:inherit;font-size:14px;padding:8px 10px;
+    border:1px solid var(--line);border-radius:2px;background:#fff;color:var(--ink);
+  }
+  textarea{min-height:150px;resize:vertical;line-height:1.5}
+  textarea:focus,input:focus{outline:2px solid var(--signal);outline-offset:-1px;border-color:var(--signal)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  select{
+    width:100%;font:inherit;font-size:14px;padding:8px 10px;border:1px solid var(--line);
+    border-radius:2px;background:#fff;color:var(--ink);cursor:pointer;
+  }
+  select:focus{outline:2px solid var(--signal);outline-offset:-1px;border-color:var(--signal)}
+  .classbar{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .classbar .btn{flex:1 1 auto;text-align:center;padding:6px 8px}
+  .check{display:flex;align-items:flex-start;gap:8px;margin-top:10px;font-size:13px;color:var(--ink)}
+  .check input{margin-top:3px;accent-color:var(--signal)}
+  .hint{font-size:12px;color:var(--ink-soft);line-height:1.5;margin:8px 0 0}
+  .range-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .range-row label{flex:1;margin:0;font-size:13px}
+  .range-row input[type=range]{flex:1;accent-color:var(--signal)}
+  .range-row .val{font-family:var(--font-mono);font-size:12px;width:34px;text-align:right;color:var(--ink-soft)}
+
+  .histlist{list-style:none;margin:0;padding:0;max-height:260px;overflow:auto}
+  .histlist li{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line-soft);font-size:13px}
+  .histlist .meta{flex:1;min-width:0}
+  .histlist .meta b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .histlist .meta span{font-family:var(--font-mono);font-size:11px;color:var(--ink-soft)}
+  .empty{font-size:13px;color:var(--ink-soft);font-style:italic}
+
+  /* ---------- Romplan ---------- */
+  .plan{max-width:1100px;margin:0 auto;overflow-x:auto;padding-bottom:6px}
+  /* snudd: teksten står 180° slik at den leses riktig fra kateteret,
+     når arket ligger med tavla nærmest deg                          */
+  .plan--snudd .seat__name,
+  .plan--snudd .board{transform:rotate(180deg)}
+  .board{
+    border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:2px;padding:10px;
+    text-align:center;font-family:var(--font-mono);font-size:11px;letter-spacing:.34em;text-transform:uppercase;
+  }
+  .board--bottom{margin-top:22px}
+
+  .carryover{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;
+    padding:11px 13px;border:1px solid var(--signal);border-radius:3px;background:rgba(11,110,143,.07);
+  }
+  .carryover__text{flex:1;min-width:220px;font-size:12.5px;color:var(--ink);line-height:1.5}
+
+  .modal{
+    position:fixed;inset:0;z-index:90;background:rgba(14,37,48,.45);
+    display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .modal[hidden]{display:none}
+  .modal__box{
+    background:#fff;border:1px solid var(--ink);border-radius:3px;padding:18px;
+    width:min(560px,100%);box-shadow:0 18px 40px rgba(14,37,48,.3);
+  }
+  .modal__box textarea{min-height:170px;font-family:var(--font-mono);font-size:11.5px}
+  .modal__row{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
+  .dragover{outline:3px dashed var(--signal);outline-offset:-8px}
+
+  .editbar{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;
+    padding:10px 12px;border:1px dashed var(--signal);border-radius:3px;background:rgba(11,110,143,.06);
+  }
+  .editbar__text{flex:1;min-width:180px;font-size:12.5px;color:var(--ink-soft)}
+
+  .plangrid{display:grid;gap:9px 5px;margin-top:22px;align-items:stretch}
+  .cell{grid-row:auto;border-radius:3px;pointer-events:none}
+  .plangrid--edit .cell{box-shadow:inset 0 0 0 1px var(--line-soft)}
+  .cell--ok{background:rgba(11,110,143,.16);box-shadow:inset 0 0 0 1px var(--signal)!important}
+  .cell--nei{background:rgba(196,35,72,.12);box-shadow:inset 0 0 0 1px var(--alert)!important}
+  .rowlabel{
+    grid-column:1;display:flex;align-items:center;justify-content:flex-end;
+    font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);letter-spacing:.06em;
+  }
+
+  /* hvert bord er sitt eget element; fargen viser makkergruppa */
+  .seat{
+    position:relative;text-align:left;cursor:pointer;min-width:0;
+    background:var(--seat-bg,var(--card));
+    border:1px solid var(--seat-edge,var(--line));
+    border-bottom:3px solid var(--seat-line,var(--line));
+    border-radius:3px;padding:10px 18px 10px 9px;min-height:52px;
+    display:flex;flex-direction:column;justify-content:center;transition:box-shadow .12s ease;
+  }
+  .seat:hover{box-shadow:0 2px 0 rgba(14,37,48,.16)}
+  .seat:focus-visible{outline:2px solid var(--signal);outline-offset:2px;z-index:5}
+  .seat__name{
+    font-weight:600;line-height:1.2;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    font-size:14.5px;
+  }
+  /* alle navn får samme skriftstørrelse: den regnes ut fra bordbredden
+     og det lengste navnet i klassen, så ingen navn brekker over to linjer */
+  @supports (container-type:inline-size){
+    .seat{container-type:inline-size}
+    .seat__name{font-size:clamp(7.5px, calc(158cqw / var(--len,8)), 15px)}
+  }
+  @supports not (container-type:inline-size){
+    .seat__name{font-size:clamp(7.5px, calc(var(--seatw,70px) * 1.58 / var(--len,8)), 15px)}
+  }
+  /* bord som står inntil hverandre i samme makkerpar smelter sammen */
+  .seat--joinL{border-top-left-radius:0;border-bottom-left-radius:0;border-left:0;padding-left:10px}
+  .seat--joinR{border-top-right-radius:0;border-bottom-right-radius:0}
+  .seat__lock{
+    position:absolute;top:3px;right:3px;border:0;background:transparent;cursor:pointer;
+    font-size:11px;line-height:1;padding:3px;border-radius:2px;opacity:.25;
+  }
+  .seat__lock:hover{opacity:1;background:rgba(14,37,48,.12)}
+  .seat--locked{box-shadow:inset 0 0 0 2px var(--lock)}
+  .seat--locked .seat__lock{opacity:1;color:var(--lock)}
+  .seat--empty{background:transparent;border-color:var(--line);border-style:dashed}
+  .seat--empty .seat__name{color:var(--ink-soft);font-weight:400;font-style:italic;font-size:11.5px!important}
+  .seat--selected{outline:3px solid var(--signal);outline-offset:1px;z-index:6}
+  .seat--repeat{outline:2px dashed var(--alert);outline-offset:2px;z-index:4}
+
+  /* redigering */
+  .seat--flyttbar{cursor:grab;touch-action:none}
+  .seat--flyttbar .seat__lock{display:none}
+  .seat--drar{cursor:grabbing;z-index:40;opacity:.94;box-shadow:0 8px 20px rgba(14,37,48,.3),inset 0 0 0 2px var(--signal)}
+  .seat__chip{
+    position:absolute;top:3px;right:3px;width:11px;height:11px;border-radius:2px;
+    background:var(--seat-line);box-shadow:0 0 0 1px rgba(255,255,255,.7);
+  }
+  .seat__del{
+    position:absolute;top:2px;left:3px;border:0;background:transparent;cursor:pointer;
+    font-size:10px;line-height:1;padding:2px 3px;border-radius:2px;color:var(--ink-soft);
+  }
+  .seat__del:hover{background:var(--alert);color:#fff}
+
+  /* fargevelger */
+  .picker{
+    position:fixed;z-index:80;background:#fff;border:1px solid var(--ink);border-radius:3px;
+    box-shadow:0 10px 26px rgba(14,37,48,.26);padding:10px;width:212px;
+  }
+  .picker h3{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px}
+  .picker__grid{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
+  .picker__sw{
+    height:22px;border:1px solid rgba(14,37,48,.18);border-radius:2px;cursor:pointer;padding:0;
+  }
+  .picker__sw:hover{transform:scale(1.12)}
+  .picker__sw--valgt{box-shadow:0 0 0 2px var(--ink)}
+  .picker__row{display:flex;gap:6px;margin-top:9px}
+  .picker__row .btn{flex:1;padding:5px 8px;font-size:11.5px;text-align:center}
+
+  .readout{
+    margin-top:26px;border-top:1px solid var(--line);padding-top:12px;
+    font-family:var(--font-mono);font-size:11.5px;color:var(--ink-soft);line-height:1.9;letter-spacing:.02em;
+  }
+  .readout b{color:var(--ink);font-weight:600}
+  .readout .warn{color:var(--alert)}
+  .legend{margin-top:14px;display:flex;gap:16px;flex-wrap:wrap;font-family:var(--font-mono);font-size:10.5px;color:var(--ink-soft);align-items:center}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:1px;margin-right:6px;vertical-align:-1px}
+  .swatches{display:flex;gap:2px;margin-right:6px}
+  .swatches i{width:8px;height:10px;margin:0}
+
+  .toast{
+    position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:var(--ink);color:#fff;
+    padding:10px 18px;border-radius:2px;font-size:13px;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s ease;
+  }
+  .toast--on{opacity:1}
+
+  @media (max-width:900px){
+    .layout{flex-direction:column}
+    .panel{width:100%;flex:none;border-right:0;border-bottom:1px solid var(--line);min-height:0}
+    .stage{padding:20px 12px 60px;width:100%}
+    .plangrid{gap:8px}
+    .makkergruppe{gap:5px;padding:14px 4px 4px}
+    .seat{min-height:44px;padding:7px 16px 7px 6px}
+    .seat{padding:7px 14px 7px 6px}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+  /* utskrift: plakat med gruppefargene, men uten annen informasjon enn navn */
+  @media print{
+    @page{ size:landscape; margin:10mm }
+    :root{ --labelcol:0px }
+    body{background:#fff!important;background-image:none!important}
+    .topbar,.panel,.legend,.editbar,.carryover,.modal,.readout,.rowlabel,.picker,
+    .seat__lock,.seat__chip,.seat__del,.cell,.toast{display:none!important}
+    .layout{display:block}
+    .stage{padding:0!important;width:100%}
+    .plan{max-width:none;overflow:visible;padding:0}
+    .plangrid{min-width:0!important;width:100%;gap:6px 5px;margin-top:14px}
+    .plangrid,.board,.seat{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .board{
+      background:#fff!important;color:#000!important;border:1.5px solid #000;
+      padding:8px;font-size:12px;letter-spacing:.4em;min-width:0!important;
+    }
+    .seat{
+      min-height:64px;padding:8px!important;align-items:center;text-align:center;
+      box-shadow:none!important;outline:0!important;
+      background:var(--seat-bg)!important;
+      border:1px solid var(--seat-edge)!important;
+      border-bottom:4px solid var(--seat-line)!important;
+      break-inside:avoid;page-break-inside:avoid;
+    }
+    .seat--joinL{border-left:0!important}
+    .seat--empty{background:transparent!important;border:1px dashed #ccc!important;border-bottom:1px dashed #ccc!important}
+    .seat--empty .seat__name{visibility:hidden}
+    .seat__name{
+      font-weight:600;color:#12242c;width:100%;text-align:center;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+      font-size:clamp(8px, calc(158cqw / var(--len,8)), 19px);
+    }
+  }
+
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div>
+    <h1>Klassekart</h1>
+    <div class="sub" id="stamp">ny plassering · ingen historikk</div>
+  </div>
+  <div class="actions">
+    <button class="btn btn--primary" id="btnGenerate">Lag nytt kart</button>
+    <button class="btn" id="btnSave">Lagre i historikk</button>
+    <button class="btn" id="btnEdit">Rediger rommet</button>
+    <button class="btn" id="btnMirror" title="Snur navnene 180° slik at de leses riktig fra kateteret, når arket ligger med tavla nærmest deg">Snu navnene</button>
+    <button class="btn" id="btnPrint">Skriv ut</button>
+  </div>
+</header>
+
+<div class="layout">
+  <aside class="panel">
+
+    <section class="block">
+      <h2 class="block__title">Klasse</h2>
+      <select id="classSelect"></select>
+      <div class="classbar">
+        <button class="btn btn--quiet" id="btnNewClass">Ny</button>
+        <button class="btn btn--quiet" id="btnRenameClass">Nytt navn</button>
+        <button class="btn btn--quiet" id="btnCopyClass">Kopier</button>
+        <button class="btn btn--quiet btn--danger" id="btnDeleteClass">Slett</button>
+      </div>
+      <p class="hint">Hver klasse har sin egen elevliste, sitt eget romoppsett og sin egen historikk.</p>
+    </section>
+
+    <section class="block">
+      <h2 class="block__title">Elever <span class="count" id="studentCount">0</span></h2>
+      <label for="students">Ett navn per linje</label>
+      <textarea id="students" placeholder="Ada Lovelace&#10;Bjørn Hansen&#10;Celine Aas"></textarea>
+      <p class="hint">Navnene brukes som identitet i historikken. Skriv dem likt hver gang.</p>
+    </section>
+
+    <section class="block">
+      <h2 class="block__title">Rommet</h2>
+      <div class="grid2">
+        <div>
+          <label for="rows">Rader</label>
+          <input type="number" id="rows" min="1" max="12" value="4">
+        </div>
+        <div>
+          <label for="desks">Bord per rad</label>
+          <input type="number" id="desks" min="1" max="16" value="8">
+        </div>
+        <div>
+          <label for="par">Bord per makkerpar</label>
+          <input type="number" id="par" min="1" max="4" value="2">
+        </div>
+        <div>
+          <label for="depth">Rader per gruppe</label>
+          <input type="number" id="depth" min="1" max="4" value="2">
+        </div>
+      </div>
+      <div class="hint" id="capacity"></div>
+      <p class="hint">Bord med samme farge er én makkergruppe: de som står side ved side er makkerpar, de foran og bak hører til samme gruppe. Tallene her styrer standardoppsettet — enkeltbord flyttes fritt under «Rediger rommet».</p>
+      <label class="check"><input type="checkbox" id="flip"> <span>Vis tavla nederst (sett fra lærerplassen)</span></label>
+    </section>
+
+    <section class="block">
+      <h2 class="block__title">Hensyn</h2>
+      <div class="range-row">
+        <label for="wNeighbor">Unngå gamle makkere</label>
+        <input type="range" id="wNeighbor" min="0" max="200" step="10" value="100">
+        <span class="val" id="wNeighborVal">100</span>
+      </div>
+      <div class="range-row">
+        <label for="wRow">Bytt fram/bak</label>
+        <input type="range" id="wRow" min="0" max="200" step="10" value="80">
+        <span class="val" id="wRowVal">80</span>
+      </div>
+      <div class="range-row">
+        <label for="wSame">Unngå samme plass</label>
+        <input type="range" id="wSame" min="0" max="100" step="5" value="25">
+        <span class="val" id="wSameVal">25</span>
+      </div>
+      <label for="forbidden" style="margin-top:12px">Skal ikke sitte sammen</label>
+      <textarea id="forbidden" style="min-height:70px" placeholder="Ada Lovelace; Bjørn Hansen"></textarea>
+      <p class="hint">Ett par per linje, skilt med semikolon. Dette veier tyngre enn alt annet.</p>
+    </section>
+
+    <section class="block">
+      <h2 class="block__title">Historikk <span class="count" id="histCount">0</span></h2>
+      <div class="grid2" style="margin-bottom:10px">
+        <input type="text" id="histLabel" placeholder="Navn på kartet">
+        <button class="btn btn--quiet" id="btnSave2">Lagre gjeldende</button>
+      </div>
+      <ul class="histlist" id="histList"></ul>
+      <div class="grid2" style="margin-top:12px">
+        <button class="btn btn--quiet" id="btnExport">Eksporter fil</button>
+        <button class="btn btn--quiet" id="btnImport">Importer fil</button>
+        <button class="btn btn--quiet" id="btnCopyData">Kopier data</button>
+        <button class="btn btn--quiet" id="btnPasteData">Lim inn data</button>
+      </div>
+      <input type="file" id="fileInput" accept="application/json" hidden>
+      <p class="hint" id="storageNote"></p>
+    </section>
+
+  </aside>
+
+  <main class="stage">
+    <div class="plan">
+      <div class="carryover" id="carryover" hidden>
+        <div class="carryover__text">
+          <b>Ny fil?</b> Hent klasser og historikk fra den forrige versjonen: importer sikkerhetskopien,
+          lim inn dataene, eller dra JSON-fila rett inn i vinduet.
+        </div>
+        <button class="btn btn--quiet" id="btnCarryImport">Importer fil</button>
+        <button class="btn btn--quiet" id="btnCarryPaste">Lim inn data</button>
+        <button class="btn btn--quiet" id="btnCarryHide">Skjul</button>
+      </div>
+
+      <div class="editbar" id="editbar" hidden>
+        <span class="editbar__text">Dra bordene dit de står i klasserommet — naboene skyves til side, og er raden full blir rommet automatisk én kolonne bredere. Etter slipp velger du farge, altså makkergruppe.</span>
+        <button class="btn btn--quiet" id="btnAddDesk">Legg til bord</button>
+        <button class="btn btn--quiet" id="btnResetRoom">Still opp på nytt</button>
+      </div>
+      <div class="board" id="boardTop">Tavle</div>
+      <div class="plangrid" id="planRows"></div>
+      <div class="board board--bottom" id="boardBottom" hidden>Tavle</div>
+
+      <div class="readout" id="readout"></div>
+      <div class="legend">
+        <span><span class="swatches" id="swatches"></span>fargen viser makkergruppa</span>
+        <span><i style="background:var(--lock)"></i>låst plass</span>
+        <span><i style="background:var(--alert)"></i>gjentatt makker</span>
+        <span>klikk to plasser for å bytte elevene</span>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="modal" id="pasteModal" hidden>
+  <div class="modal__box">
+    <h2 class="block__title">Lim inn data fra en tidligere versjon</h2>
+    <p class="hint" style="margin-top:0">Åpne den forrige fila, trykk «Kopier data», og lim inn her.
+      Klasser du allerede har, blir slått sammen — ingen kart forsvinner.</p>
+    <textarea id="pasteBox" placeholder="Lim inn innholdet her"></textarea>
+    <div class="modal__row">
+      <button class="btn btn--primary" id="btnPasteOk">Slå sammen</button>
+      <button class="btn btn--quiet" id="btnPasteCancel">Avbryt</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ============ Tilstand ============ */
+var STORE_KEY = "klassekart.v1";
+var DECAY = 0.6;
+var FORBID_PENALTY = 5000;
+var W_PAR = 1;      /* samme makkerpar: samme farge, samme rad */
+var W_GROUP = 0.5;  /* samme makkergruppe, foran eller bak */
+
+var HUES = [8, 202, 118, 300, 45, 250, 162, 340, 25, 222, 92, 278, 68, 182, 318, 138];
+
+function uid(){ return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,7); }
+function newClass(name){
+  return {
+    id: uid(), name: name || "Ny klasse",
+    students: [], forbidden: [],
+    layout: { rows:4, desks:8, par:2, depth:2, flip:false, snu:false },
+    weights: { neighbor:100, row:80, same:25 },
+    room: null,
+    chart: {}, locks: {}, history: []
+  };
+}
+var store = { v:2, active:null, classes:[] };
+var state = newClass("Klassen min");
+var selected = null;
+var diag = null;
+var storageOK = true;
+var edit = { on:false };
+var drag = null;
+var cells = [];
+var picker = null;
+
+/* ============ Småting ============ */
+function $(id){ return document.getElementById(id); }
+function pairKey(a,b){ return a < b ? a+"\u0000"+b : b+"\u0000"+a; }
+function seatId(r,d){ return "r"+r+"g"+d+"s0"; }
+function parseSeat(id){
+  var m = /^r(\d+)g(\d+)s(\d+)$/.exec(id);
+  return m ? { row:+m[1], desk:+m[2] } : null;
+}
+function toast(msg){
+  var t = $("toast"); t.textContent = msg; t.classList.add("toast--on");
+  clearTimeout(toast._t); toast._t = setTimeout(function(){ t.classList.remove("toast--on"); }, 2800);
+}
+function todayLabel(){
+  return new Date().toLocaleDateString("nb-NO", { day:"2-digit", month:"short", year:"numeric" });
+}
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+function rowNorm(row, rows){ return rows > 1 ? row/(rows-1) : 0.5; }
+function shuffle(arr){
+  for (var i=arr.length-1; i>0; i--){
+    var j = Math.floor(Math.random()*(i+1)), t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  }
+  return arr;
+}
+function palette(i){
+  var h = HUES[((i % HUES.length) + HUES.length) % HUES.length];
+  return {
+    seat:"hsl("+h+",66%,92%)", edge:"hsl("+h+",40%,72%)", line:"hsl("+h+",58%,38%)",
+    wash:"hsl("+h+",52%,96.5%)", rim:"hsl("+h+",36%,80%)"
+  };
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"]/g, function(c){
+    return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c];
+  });
+}
+
+/* ============ Rommets struktur ============
+   bord         = ett element med posisjon og farge
+   makkerpar    = bordene med samme farge i samme rad
+   makkergruppe = alle bord med samme farge                          */
+function lay(l){
+  return {
+    rows: l.rows, desks: l.desks,
+    par: clamp(l.par, 1, l.desks),
+    depth: clamp(l.depth, 1, l.rows),
+    flip: !!l.flip,
+    snu: !!l.snu
+  };
+}
+
+function defaultRoom(L){
+  var out = [], perRow = Math.ceil(L.desks / L.par);
+  for (var r=0; r<L.rows; r++){
+    for (var d=0; d<L.desks; d++){
+      out.push({
+        id: uid(), row: r, col: d,
+        group: Math.floor(r / L.depth) * perRow + Math.floor(d / L.par)
+      });
+    }
+  }
+  return out;
+}
+
+/* godtar både bordlister og eldre rom bygd av blokker */
+function normRoom(room){
+  if (!Array.isArray(room)) return null;
+  var out = [];
+  room.forEach(function(item, i){
+    if (item && item.depth !== undefined && item.par !== undefined){
+      for (var a=0; a<item.depth; a++)
+        for (var b=0; b<item.par; b++)
+          out.push({ id:uid(), row:(item.row|0)+a, col:(item.col|0)+b, group:i });
+    } else if (item){
+      out.push({ id:item.id || uid(), row:item.row|0, col:item.col|0, group:item.group|0 });
+    }
+  });
+  return out.length ? out : null;
+}
+
+function deskAt(room, row, col){
+  for (var i=0; i<room.length; i++)
+    if (room[i].row === row && room[i].col === col) return room[i];
+  return null;
+}
+function freeCell(room, L){
+  for (var r=0; r<L.rows; r++)
+    for (var c=0; c<L.desks; c++)
+      if (!deskAt(room, r, c)) return { row:r, col:c };
+  return null;
+}
+function nextFreeGroup(room){
+  var used = {};
+  room.forEach(function(d){ used[d.group] = true; });
+  for (var i=0; i<64; i++) if (!used[i]) return i;
+  return 0;
+}
+
+/* makkergruppene: farge -> bordene, sortert radvis */
+function groupsOf(room, L){
+  var by = {};
+  room.forEach(function(d){
+    if (d.row < 0 || d.col < 0 || d.row >= L.rows || d.col >= L.desks) return;
+    (by[d.group] = by[d.group] || []).push(d);
+  });
+  return Object.keys(by).map(function(g){
+    var desks = by[g].slice().sort(function(a,b){ return (a.row-b.row) || (a.col-b.col); });
+    var rows = {};
+    desks.forEach(function(d){ (rows[d.row] = rows[d.row] || []).push(d); });
+    return { id:+g, desks:desks, rows:rows, cap:desks.length };
+  }).sort(function(a,b){
+    var ad = a.desks[0], bd = b.desks[0];
+    return (ad.row - bd.row) || (ad.col - bd.col);
+  });
+}
+
+function seatMap(L, room){
+  var m = {};
+  (room || []).forEach(function(d){
+    if (d.row < 0 || d.col < 0 || d.row >= L.rows || d.col >= L.desks) return;
+    m[d.row + ":" + d.col] = { g:"g" + d.group, p:"g" + d.group + "#" + d.row };
+  });
+  return m;
+}
+
+/* ============ Naboskap med vekt ============ */
+function relations(ids, map){
+  var byPar = {}, byGroup = {};
+  ids.forEach(function(id){
+    var p = parseSeat(id); if (!p) return;
+    var cell = map[p.row + ":" + p.desk];
+    if (!cell) return;
+    (byPar[cell.p] = byPar[cell.p] || []).push(id);
+    (byGroup[cell.g] = byGroup[cell.g] || []).push(id);
+  });
+  var out = [], seen = new Set();
+  Object.keys(byPar).forEach(function(k){
+    var list = byPar[k];
+    for (var i=0; i<list.length; i++)
+      for (var j=i+1; j<list.length; j++){
+        out.push([list[i], list[j], W_PAR]);
+        seen.add(list[i] + "|" + list[j]);
+      }
+  });
+  Object.keys(byGroup).forEach(function(k){
+    var list = byGroup[k];
+    for (var i=0; i<list.length; i++)
+      for (var j=i+1; j<list.length; j++){
+        if (seen.has(list[i] + "|" + list[j]) || seen.has(list[j] + "|" + list[i])) continue;
+        out.push([list[i], list[j], W_GROUP]);
+      }
+  });
+  return out;
+}
+
+/* ============ Historikk → tall ============ */
+function historyLayout(entry){
+  var l = entry.layout || {};
+  if (l.desks) return lay({ rows:l.rows||1, desks:l.desks, par:l.par||2, depth:l.depth||2 });
+  var seats = l.seats || 2, groups = l.groups || 1;
+  return lay({ rows:l.rows||1, desks:groups*seats, par:seats, depth:Math.max(1, Math.round((l.cluster||seats)/seats)) });
+}
+function normaliseSeats(entry){
+  var l = entry.layout || {};
+  if (l.desks || !l.seats) return entry.seats;
+  var out = {}, seats = l.seats;
+  Object.keys(entry.seats).forEach(function(id){
+    var m = /^r(\d+)g(\d+)s(\d+)$/.exec(id);
+    if (!m) return;
+    out[seatId(+m[1], (+m[2])*seats + (+m[3]))] = entry.seats[id];
+  });
+  return out;
+}
+/* eldre kart uten lagret rom: utled makkerpar av standardoppsettet */
+function historyMap(entry, L){
+  var room = normRoom(entry.room);
+  if (!room) room = defaultRoom(L);
+  return seatMap(L, room);
+}
+
+function sameChart(seats, chart){
+  var a = Object.keys(seats), b = Object.keys(chart);
+  if (a.length !== b.length) return false;
+  for (var i=0; i<a.length; i++) if (chart[a[i]] !== seats[a[i]]) return false;
+  return true;
+}
+/* hoppOverNaa = se bort fra et lagret kart som er identisk med det som vises,
+   slik at kartet ikke framstår som en gjentakelse av seg selv                */
+function historyStats(hoppOverNaa){
+  var pair = new Map(), everPar = new Set(), everGroup = new Set(), acc = new Map(), last = new Map();
+  for (var i = state.history.length-1, age = 0; i >= 0; i--){
+    var entry = state.history[i];
+    var L = historyLayout(entry);
+    var seats = normaliseSeats(entry);
+    if (hoppOverNaa && sameChart(seats, state.chart)) continue;
+    var w = Math.pow(DECAY, age);
+    age++;
+    var map = historyMap(entry, L);
+    relations(Object.keys(seats), map).forEach(function(p){
+      var a = seats[p[0]], b = seats[p[1]];
+      if (!a || !b) return;
+      var k = pairKey(a,b);
+      pair.set(k, (pair.get(k)||0) + w * p[2]);
+      if (p[2] >= W_PAR) everPar.add(k); else everGroup.add(k);
+    });
+    Object.keys(seats).forEach(function(sid){
+      var name = seats[sid]; if (!name) return;
+      var pos = parseSeat(sid); if (!pos) return;
+      var nrm = rowNorm(pos.row, L.rows);
+      var a = acc.get(name) || { w:0, v:0 };
+      a.w += w; a.v += w*nrm; acc.set(name, a);
+      if (!last.has(name)) last.set(name, { seatId:sid, row:pos.row, norm:nrm });
+    });
+  }
+  var target = new Map();
+  acc.forEach(function(a, name){ target.set(name, 1 - (a.v/a.w)); });
+  return { pair:pair, everPar:everPar, everGroup:everGroup, target:target, last:last };
+}
+
+/* ============ Fordeling ============
+   Makkerparene fylles helt. Går ikke elevtallet opp, blir det ett par
+   med bare én elev — og aldri en makkergruppe med bare den ene.      */
+function allocate(n, groups, lockedByGroup){
+  if (!n || !groups.length) return [];
+  var mand = groups.filter(function(g){ return lockedByGroup["g"+g.id]; })
+    .sort(function(a,b){ return lockedByGroup["g"+b.id].length - lockedByGroup["g"+a.id].length; });
+  var rest = shuffle(groups.filter(function(g){ return !lockedByGroup["g"+g.id]; }));
+  var order = mand.concat(rest);
+
+  var chosen = [], sizes = [], sum = 0, k = 0;
+  while (k < order.length && (sum < n || k < mand.length)){
+    chosen.push(order[k]); sum += order[k].cap; k++;
+  }
+  if (!chosen.length) return [];
+  var prev = 0;
+  chosen.forEach(function(g, i){
+    if (i < chosen.length - 1){ sizes.push(g.cap); prev += g.cap; }
+  });
+  sizes.push(Math.max(0, Math.min(n - prev, chosen[chosen.length-1].cap)));
+
+  /* en alenegruppe på slutten: lån én elev fra gruppa foran */
+  if (sizes.length > 1 && sizes[sizes.length-1] === 1){
+    for (var i=sizes.length-2; i>=0; i--){
+      if (sizes[i] > 2 && chosen[chosen.length-1].cap >= 2){
+        sizes[i]--; sizes[sizes.length-1] = 2; break;
+      }
+    }
+  }
+  /* trim hvis vi har for mye */
+  var total = sizes.reduce(function(a,b){ return a+b; }, 0);
+  for (var g2=sizes.length-1; g2>=0 && total > n; g2--){
+    var cut = Math.min(sizes[g2], total - n);
+    sizes[g2] -= cut; total -= cut;
+  }
+  var out = [];
+  chosen.forEach(function(g, i){ if (sizes[i] > 0) out.push({ group:g, size:sizes[i] }); });
+  return out;
+}
+
+/* fordeler en gruppes elever på radene sine: en rad fylles helt før neste */
+function splitRows(size, group, locked){
+  var rowKeys = Object.keys(group.rows).map(Number);
+  var lockRows = {};
+  (locked || []).forEach(function(l){ lockRows[l.row] = (lockRows[l.row] || 0) + 1; });
+  var order = rowKeys.filter(function(r){ return lockRows[r]; })
+    .concat(shuffle(rowKeys.filter(function(r){ return !lockRows[r]; })));
+  var counts = {}, left = size;
+  order.forEach(function(r){
+    var capacity = group.rows[r].length;
+    var want = Math.min(capacity, left);
+    if (lockRows[r]) want = Math.max(want, Math.min(lockRows[r], capacity));
+    counts[r] = want; left -= want;
+  });
+  return counts;
+}
+
+/* ============ Generering ============ */
+function generate(){
+  var n = state.students.length;
+  if (!n){ toast("Legg inn elevnavn først."); return; }
+
+  var L = lay(state.layout);
+  ensureRoom();
+  var map = seatMap(L, state.room);
+  var groups = groupsOf(state.room, L);
+  if (!groups.length){ toast("Rommet er tomt. Legg til bord."); return; }
+  if (n > state.room.length){ toast("For få bord: " + (n - state.room.length) + " elev(er) får ikke plass."); return; }
+
+  var known = new Set(state.students);
+  var lockedSeat = {}, lockedByGroup = {};
+  Object.keys(state.locks).forEach(function(id){
+    var name = state.chart[id]; if (!name || !known.has(name)) return;
+    var p = parseSeat(id); if (!p) return;
+    var cell = map[p.row + ":" + p.desk]; if (!cell) return;
+    lockedSeat[id] = name;
+    (lockedByGroup[cell.g] = lockedByGroup[cell.g] || []).push({ id:id, row:p.row, desk:p.desk, name:name });
+  });
+
+  var stats = historyStats();
+  var forbid = new Set();
+  state.forbidden.forEach(function(p){ forbid.add(pairKey(p[0], p[1])); });
+  var WN = state.weights.neighbor, WR = state.weights.row, WS = state.weights.same;
+
+  function seatPlan(){
+    var plan = allocate(n, groups, lockedByGroup);
+    var seats = [];
+    plan.forEach(function(item){
+      var g = item.group;
+      var locked = lockedByGroup["g"+g.id] || [];
+      var counts = splitRows(item.size, g, locked);
+      Object.keys(counts).forEach(function(r){
+        var want = counts[r]; if (!want) return;
+        var lockedCols = locked.filter(function(l){ return l.row === +r; }).map(function(l){ return l.desk; });
+        var others = shuffle(g.rows[r].map(function(d){ return d.col; })
+          .filter(function(c){ return lockedCols.indexOf(c) < 0; }));
+        var use = lockedCols.concat(others).slice(0, Math.max(want, lockedCols.length))
+          .sort(function(a,b){ return a-b; });
+        use.forEach(function(c){ seats.push({ id:seatId(+r, c), row:+r, desk:c }); });
+      });
+    });
+    return seats;
+  }
+
+  var best = null, bestScore = Infinity, bestSeats = null;
+  var RESTARTS = 8, ITERS = Math.max(2500, n * 500);
+
+  for (var attempt=0; attempt<RESTARTS; attempt++){
+    var seats = seatPlan();
+    if (!seats.length) break;
+    var index = new Map(); seats.forEach(function(s,i){ index.set(s.id, i); });
+    var adj = relations(seats.map(function(s){ return s.id; }), map)
+      .map(function(p){ return [index.get(p[0]), index.get(p[1]), p[2]]; });
+    var norms = seats.map(function(s){ return rowNorm(s.row, L.rows); });
+
+    var assign = new Array(seats.length).fill(null);
+    var pinned = new Set();
+    seats.forEach(function(s,i){
+      if (lockedSeat[s.id]){ assign[i] = lockedSeat[s.id]; pinned.add(assign[i]); }
+    });
+    var free = [];
+    seats.forEach(function(s,i){ if (!assign[i]) free.push(i); });
+    var pool = shuffle(state.students.filter(function(nm){ return !pinned.has(nm); }));
+    free.forEach(function(pos, i){ assign[pos] = pool[i] || null; });
+
+    var scoreOf = function(a){
+      var s = 0, i, x, y, k;
+      for (i=0; i<adj.length; i++){
+        x = a[adj[i][0]]; y = a[adj[i][1]];
+        if (!x || !y) continue;
+        k = pairKey(x,y);
+        s += WN * (stats.pair.get(k) || 0) * adj[i][2];
+        if (forbid.has(k)) s += FORBID_PENALTY * (adj[i][2] >= W_PAR ? 1 : 0.6);
+      }
+      for (i=0; i<a.length; i++){
+        var nm = a[i]; if (!nm) continue;
+        var t = stats.target.get(nm);
+        if (t !== undefined){ var d = norms[i] - t; s += WR * d * d; }
+        var l = stats.last.get(nm);
+        if (l && l.seatId === seats[i].id) s += WS;
+      }
+      return s;
+    };
+
+    var cur = scoreOf(assign), T0 = 40;
+    for (var it=0; it<ITERS && free.length > 1; it++){
+      var xi = free[Math.floor(Math.random()*free.length)];
+      var yi = free[Math.floor(Math.random()*free.length)];
+      if (xi === yi) continue;
+      var tmp = assign[xi]; assign[xi] = assign[yi]; assign[yi] = tmp;
+      var next = scoreOf(assign), delta = next - cur;
+      var T = T0 * Math.exp(-5 * it / ITERS) + 0.01;
+      if (delta <= 0 || Math.random() < Math.exp(-delta/T)) cur = next;
+      else { tmp = assign[xi]; assign[xi] = assign[yi]; assign[yi] = tmp; }
+    }
+    if (cur < bestScore){ bestScore = cur; best = assign.slice(); bestSeats = seats; }
+  }
+
+  if (!bestSeats){ toast("Fikk ikke plass til alle. Legg til flere bord."); return; }
+
+  state.chart = {};
+  state.locks = {};
+  bestSeats.forEach(function(s,i){
+    if (!best[i]) return;
+    state.chart[s.id] = best[i];
+    if (lockedSeat[s.id] === best[i]) state.locks[s.id] = true;
+  });
+  selected = null;
+  render();
+  toast("Nytt kart: " + diag.groupCount + " makkergrupper"
+    + (diag.singles ? ", " + diag.singles + " sitter alene i makkerparet" : "") + ".");
+}
+
+/* ============ Diagnose ============ */
+function analyse(){
+  var L = lay(state.layout);
+  var stats = historyStats(true);
+  var ids = Object.keys(state.chart);
+  var map = seatMap(L, state.room);
+
+  var perPar = {}, perGroup = {};
+  ids.forEach(function(id){
+    var p = parseSeat(id); if (!p) return;
+    var cell = map[p.row + ":" + p.desk]; if (!cell) return;
+    perPar[cell.p] = (perPar[cell.p] || 0) + 1;
+    perGroup[cell.g] = (perGroup[cell.g] || 0) + 1;
+  });
+
+  var repeats = [], groupRepeats = [], repeatSeats = new Set();
+  relations(ids, map).forEach(function(p){
+    var a = state.chart[p[0]], b = state.chart[p[1]];
+    if (!a || !b) return;
+    var k = pairKey(a,b);
+    if (p[2] >= W_PAR){
+      if (stats.everPar.has(k)){ repeats.push(a + " + " + b); repeatSeats.add(p[0]); repeatSeats.add(p[1]); }
+    } else if (stats.everGroup.has(k) || stats.everPar.has(k)){
+      groupRepeats.push(a + " + " + b);
+    }
+  });
+
+  var singles = 0;
+  Object.keys(perPar).forEach(function(k){ if (perPar[k] === 1) singles++; });
+  var lonelyGroups = 0;
+  Object.keys(perGroup).forEach(function(k){ if (perGroup[k] < 2) lonelyGroups++; });
+
+  var sameSeat = 0, moved = 0, known = 0, notes = {};
+  ids.forEach(function(id){
+    var name = state.chart[id], p = parseSeat(id);
+    if (!p) return;
+    var l = stats.last.get(name);
+    if (!l){ notes[id] = "ny i historikken"; return; }
+    known++;
+    if (l.seatId === id) sameSeat++;
+    var d = rowNorm(p.row, L.rows) - l.norm;
+    if (d > 0.08){ notes[id] = "flyttet bakover"; moved++; }
+    else if (d < -0.08){ notes[id] = "flyttet framover"; moved++; }
+    else notes[id] = "samme sone";
+  });
+
+  diag = {
+    L:L, perPar:perPar, perGroup:perGroup,
+    groupCount: Object.keys(perGroup).length,
+    groupSizes: Object.keys(perGroup).map(function(k){ return perGroup[k]; }),
+    parSizes: Object.keys(perPar).map(function(k){ return perPar[k]; }),
+    singles:singles, lonelyGroups:lonelyGroups,
+    repeats:repeats, groupRepeats:groupRepeats, repeatSeats:repeatSeats,
+    notes:notes, sameSeat:sameSeat, moved:moved, known:known
+  };
+}
+
+/* ============ Tegning ============ */
+function ensureRoom(){
+  var L = lay(state.layout);
+  if (!state.room || !state.room.length) state.room = defaultRoom(L);
+  state.room = state.room.filter(function(d){
+    return d.row >= 0 && d.col >= 0 && d.row < L.rows && d.col < L.desks;
+  });
+  if (!state.room.length) state.room = defaultRoom(L);
+}
+function visRow(r, L){ return state.layout.flip ? (L.rows - 1 - r) : r; }
+
+/* minste fornuftige bordbredde: nok til at det lengste navnet er lesbart,
+   men ikke så bredt at rommet må skrolles unødig                        */
+function longestName(){
+  var lengst = 4;
+  state.students.forEach(function(n){ lengst = Math.max(lengst, n.length); });
+  Object.keys(state.chart).forEach(function(k){ lengst = Math.max(lengst, (state.chart[k]||"").length); });
+  return lengst;
+}
+function deskWidth(){
+  return Math.round(clamp(6.4 * longestName() + 22, 58, 112));
+}
+
+function render(){
+  var L = lay(state.layout);
+  ensureRoom();
+  var map = seatMap(L, state.room);
+  Object.keys(state.locks).forEach(function(id){
+    var p = parseSeat(id);
+    if (!p || !map[p.row + ":" + p.desk] || !state.chart[id]) delete state.locks[id];
+  });
+  analyse();
+
+  var wrap = $("planRows");
+  wrap.innerHTML = "";
+  wrap.className = "plangrid" + (edit.on ? " plangrid--edit" : "");
+  wrap.style.gridTemplateColumns = "var(--labelcol,34px) repeat(" + L.desks + ", minmax(0,1fr))";
+  var minW = 34 + L.desks * deskWidth();
+  wrap.style.setProperty("--len", longestName());
+  wrap.style.minWidth = minW + "px";
+  $("boardTop").style.minWidth = minW + "px";
+  $("boardBottom").style.minWidth = minW + "px";
+  $("boardTop").hidden = state.layout.flip;
+  $("boardBottom").hidden = !state.layout.flip;
+  document.querySelector(".plan").className = "plan" + (state.layout.snu ? " plan--snudd" : "");
+  $("btnMirror").className = "btn" + (state.layout.snu ? " btn--primary" : "");
+  $("editbar").hidden = !edit.on;
+  $("btnEdit").textContent = edit.on ? "Ferdig med rommet" : "Rediger rommet";
+  $("btnEdit").className = "btn" + (edit.on ? " btn--primary" : "");
+
+  for (var r=0; r<L.rows; r++){
+    var lab = document.createElement("div");
+    lab.className = "rowlabel";
+    lab.textContent = "RAD " + (r+1);
+    lab.style.gridRow = (visRow(r, L) + 1) + " / span 1";
+    wrap.appendChild(lab);
+  }
+
+  cells = [];
+  for (var r2=0; r2<L.rows; r2++){
+    for (var d2=0; d2<L.desks; d2++){
+      var cell = document.createElement("div");
+      cell.className = "cell";
+      cell.style.gridRow = (visRow(r2, L) + 1) + " / span 1";
+      cell.style.gridColumn = (d2 + 2) + " / span 1";
+      wrap.appendChild(cell);
+      cells.push({ row:r2, col:d2, el:cell });
+    }
+  }
+
+  state.room.slice().sort(function(a,b){ return (a.row-b.row) || (a.col-b.col); })
+    .forEach(function(d){ wrap.appendChild(seatEl(d, L)); });
+
+  measureDesks();
+  visOverforing();
+  renderSwatches();
+  renderReadout();
+  renderHistory();
+  updateCapacity();
+  $("studentCount").textContent = state.students.length;
+  $("histCount").textContent = state.history.length;
+  var lastEntry = state.history[state.history.length-1];
+  $("stamp").textContent = state.name + " · " + (state.history.length
+    ? state.history.length + " lagrede kart · siste: " + lastEntry.label
+    : "ingen historikk ennå");
+}
+
+/* reservekopi av bordbredden for nettlesere uten container queries */
+function measureDesks(){
+  var wrap = $("planRows");
+  if (!cells.length || !wrap.getBoundingClientRect) return;
+  var w = cells[0].el.getBoundingClientRect().width;
+  if (w > 0) wrap.style.setProperty("--seatw", Math.round(w) + "px");
+}
+
+function seatEl(d, L){
+  var id = seatId(d.row, d.col);
+  var name = state.chart[id];
+  var col = palette(d.group);
+  var venstre = deskAt(state.room, d.row, d.col - 1);
+  var hoyre = deskAt(state.room, d.row, d.col + 1);
+
+  var el = document.createElement("div");
+  el.className = "seat" + (name ? "" : " seat--empty")
+    + (state.locks[id] ? " seat--locked" : "")
+    + (selected === id ? " seat--selected" : "")
+    + (diag && diag.repeatSeats.has(id) ? " seat--repeat" : "")
+    + (edit.on ? " seat--flyttbar" : "")
+    + (venstre && venstre.group === d.group ? " seat--joinL" : "")
+    + (hoyre && hoyre.group === d.group ? " seat--joinR" : "");
+  el.style.gridRow = (visRow(d.row, L) + 1) + " / span 1";
+  el.style.gridColumn = (d.col + 2) + " / span 1";
+  el.style.setProperty("--seat-bg", name ? col.seat : "transparent");
+  el.style.setProperty("--seat-edge", col.edge);
+  el.style.setProperty("--seat-line", col.line);
+  el.dataset.id = id;
+  el.dataset.did = d.id;
+  el.tabIndex = 0;
+  el.setAttribute("role","button");
+  var where = "rad " + (d.row+1) + ", bord " + (d.col+1) + ", gruppe " + (d.group+1);
+  el.setAttribute("aria-label", (name || "tom plass") + ", " + where);
+  el.title = (name || "Tom plass") + " — " + where
+    + (name && diag && diag.notes[id] ? " · " + diag.notes[id] : "")
+    + (diag && diag.repeatSeats.has(id) ? " · har vært makkere før" : "");
+
+  var nm = document.createElement("span");
+  nm.className = "seat__name";
+  nm.textContent = name || "tom";
+  el.appendChild(nm);
+
+  if (edit.on){
+    var chip = document.createElement("span");
+    chip.className = "seat__chip";
+    el.appendChild(chip);
+    var del = document.createElement("button");
+    del.className = "seat__del";
+    del.type = "button";
+    del.textContent = "✕";
+    del.title = "Fjern bordet";
+    del.addEventListener("click", function(ev){ ev.stopPropagation(); removeDesk(d); });
+    el.appendChild(del);
+    el.addEventListener("pointerdown", function(ev){ dragStart(ev, d, el); });
+  } else if (name){
+    var lock = document.createElement("button");
+    lock.className = "seat__lock";
+    lock.type = "button";
+    lock.textContent = state.locks[id] ? "🔒" : "🔓";
+    lock.title = state.locks[id] ? "Lås opp plassen" : "Lås eleven til plassen";
+    lock.setAttribute("aria-label", lock.title);
+    lock.addEventListener("click", function(ev){
+      ev.stopPropagation();
+      if (state.locks[id]) delete state.locks[id]; else state.locks[id] = true;
+      render(); save();
+    });
+    el.appendChild(lock);
+  }
+
+  el.addEventListener("click", function(){ if (!edit.on) pick(id); });
+  el.addEventListener("keydown", function(ev){
+    if (ev.key === "Enter" || ev.key === " "){
+      ev.preventDefault();
+      if (edit.on) openPicker(d, el); else pick(id);
+    }
+  });
+  return el;
+}
+
+function pick(id){
+  if (edit.on) return;
+  if (selected === null){ selected = id; render(); return; }
+  if (selected === id){ selected = null; render(); return; }
+  var a = state.chart[selected], b = state.chart[id];
+  if (b) state.chart[selected] = b; else delete state.chart[selected];
+  if (a) state.chart[id] = a; else delete state.chart[id];
+  var la = state.locks[selected], lb = state.locks[id];
+  if (lb) state.locks[selected] = true; else delete state.locks[selected];
+  if (la) state.locks[id] = true; else delete state.locks[id];
+  selected = null;
+  render(); save();
+}
+
+/* ============ Flytting av bord ============ */
+function dragStart(ev, d, el){
+  if (!edit.on || drag) return;
+  if (ev.target.closest(".seat__del")) return;
+  ev.preventDefault();
+  closePicker();
+  drag = { d:d, el:el, x0:ev.clientX, y0:ev.clientY, moved:false, ok:null };
+  el.classList.add("seat--drar");
+  if (el.setPointerCapture) el.setPointerCapture(ev.pointerId);
+  el.addEventListener("pointermove", dragMove);
+  el.addEventListener("pointerup", dragEnd);
+  el.addEventListener("pointercancel", dragEnd);
+}
+
+function dragMove(ev){
+  if (!drag) return;
+  var dx = ev.clientX - drag.x0, dy = ev.clientY - drag.y0;
+  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) drag.moved = true;
+  drag.el.style.transform = "translate(" + dx + "px," + dy + "px)";
+
+  var hit = cellUnder(drag.el);
+  cells.forEach(function(c){ c.el.classList.remove("cell--ok","cell--nei"); });
+  drag.ok = null;
+  if (!hit) return;
+  var kan = canPlace(drag.d, hit.row, hit.col);
+  var target = cells.filter(function(c){ return c.row === hit.row && c.col === hit.col; })[0];
+  if (target) target.el.classList.add(kan ? "cell--ok" : "cell--nei");
+  if (kan) drag.ok = hit;
+}
+
+function dragEnd(){
+  if (!drag) return;
+  var el = drag.el, target = drag.ok, d = drag.d, moved = drag.moved;
+  el.removeEventListener("pointermove", dragMove);
+  el.removeEventListener("pointerup", dragEnd);
+  el.removeEventListener("pointercancel", dragEnd);
+  el.classList.remove("seat--drar");
+  el.style.transform = "";
+  cells.forEach(function(c){ c.el.classList.remove("cell--ok","cell--nei"); });
+  drag = null;
+  if (!moved){ openPicker(d, el); return; }
+  if (target && (target.row !== d.row || target.col !== d.col)){
+    if (placeDesk(d, target.row, target.col)){
+      var ny = document.querySelector('.seat[data-did="' + d.id + '"]');
+      openPicker(d, ny || el);
+    }
+  }
+}
+
+/* finner cella bordet svever over — nærmeste celle når det ligger mellom to */
+function cellUnder(el){
+  var rect = el.getBoundingClientRect();
+  var px = (rect.left + rect.right) / 2, py = (rect.top + rect.bottom) / 2;
+  var inne = null, naermest = null, best = Infinity;
+  cells.forEach(function(c){
+    var r = c.el.getBoundingClientRect();
+    if (px >= r.left && px <= r.right && py >= r.top && py <= r.bottom){ inne = c; return; }
+    var dx = px - (r.left + r.right)/2, dy = py - (r.top + r.bottom)/2;
+    var d = dx*dx + dy*dy;
+    if (d < best){ best = d; naermest = c; }
+  });
+  if (inne) return inne;
+  var wrap = $("planRows").getBoundingClientRect();
+  var innenfor = px >= wrap.left - 60 && px <= wrap.right + 60 && py >= wrap.top - 60 && py <= wrap.bottom + 60;
+  return innenfor ? naermest : null;
+}
+
+/* er det plass — enten ledig celle eller nok rom til å skyve naboene? */
+function canPlace(d, row, col){
+  var L = lay(state.layout);
+  if (row < 0 || col < 0 || row >= L.rows || col >= L.desks) return false;
+  var opptatt = deskAt(state.room, row, col);
+  if (!opptatt || opptatt.id === d.id) return true;
+  if (shiftPlan(d, row, col, L)) return true;
+  /* raden er helt full: da kan rommet utvides med en kolonne */
+  return L.desks < 16;
+}
+
+/* hvilke naboer må flytte seg, og hvor? */
+function shiftPlan(d, row, col, L){
+  var others = state.room.filter(function(x){ return x.id !== d.id && x.row === row; });
+  var at = {};
+  others.forEach(function(x){ at[x.col] = x; });
+  if (!at[col]) return [];
+
+  var slutt = col; while (at[slutt + 1]) slutt++;
+  if (slutt + 1 <= L.desks - 1){
+    var hoyre = [];
+    for (var c = slutt; c >= col; c--) hoyre.push({ d:at[c], row:row, col:c + 1 });
+    return hoyre;
+  }
+  var start = col; while (at[start - 1]) start--;
+  if (start - 1 >= 0){
+    var venstre = [];
+    for (var c2 = start; c2 <= col; c2++) venstre.push({ d:at[c2], row:row, col:c2 - 1 });
+    return venstre;
+  }
+  return null;
+}
+
+function placeDesk(d, row, col){
+  var L = lay(state.layout);
+  var plan = deskAt(state.room, row, col) ? shiftPlan(d, row, col, L) : [];
+  var utvidet = false;
+  if (!plan){
+    if (state.layout.desks >= 16){
+      toast("Raden er full, og rommet kan ikke bli bredere.");
+      return false;
+    }
+    /* gi raden én kolonne til, så det blir plass til å skyve */
+    state.layout.desks += 1;
+    syncLayoutInputs();
+    L = lay(state.layout);
+    utvidet = true;
+    plan = shiftPlan(d, row, col, L);
+    if (!plan){ state.layout.desks -= 1; syncLayoutInputs(); toast("Fikk ikke plass i den raden."); return false; }
+  }
+  applyMoves(plan.concat([{ d:d, row:row, col:col }]));
+  selected = null;
+  render(); save();
+  if (utvidet) toast("Raden var full — rommet ble én kolonne bredere.");
+  return true;
+}
+
+/* flytter bordene og elevene som sitter ved dem */
+function applyMoves(moves){
+  var mapId = {};
+  moves.forEach(function(m){ mapId[seatId(m.d.row, m.d.col)] = seatId(m.row, m.col); });
+  var chart = {}, locks = {};
+  Object.keys(state.chart).forEach(function(id){ chart[mapId[id] || id] = state.chart[id]; });
+  Object.keys(state.locks).forEach(function(id){ locks[mapId[id] || id] = true; });
+  state.chart = chart; state.locks = locks;
+  moves.forEach(function(m){ m.d.row = m.row; m.d.col = m.col; });
+}
+
+function addDesk(){
+  var L = lay(state.layout);
+  var spot = freeCell(state.room, L);
+  if (!spot){ toast("Ingen ledig celle. Øk antall rader eller bord per rad."); return; }
+  var d = { id:uid(), row:spot.row, col:spot.col, group:nextFreeGroup(state.room) };
+  state.room.push(d);
+  render(); save();
+  var el = document.querySelector('.seat[data-did="' + d.id + '"]');
+  if (el) openPicker(d, el);
+}
+
+function removeDesk(d){
+  var id = seatId(d.row, d.col);
+  var hadde = state.chart[id];
+  delete state.chart[id]; delete state.locks[id];
+  state.room = state.room.filter(function(x){ return x.id !== d.id; });
+  closePicker();
+  render(); save();
+  toast(hadde ? "Fjernet bordet. " + hadde + " har ikke plass nå." : "Fjernet bordet.");
+}
+
+function resetRoom(){
+  state.room = defaultRoom(lay(state.layout));
+  closePicker();
+  render(); save();
+  toast("Rommet er stilt opp på nytt.");
+}
+
+/* ============ Fargevelger ============ */
+function closePicker(){
+  if (picker && picker.parentNode) picker.parentNode.removeChild(picker);
+  picker = null;
+}
+function openPicker(d, anchor){
+  closePicker();
+  var box = document.createElement("div");
+  box.className = "picker";
+  var h = document.createElement("h3");
+  h.textContent = "Makkergruppe — rad " + (d.row+1) + ", bord " + (d.col+1);
+  box.appendChild(h);
+
+  var grid = document.createElement("div");
+  grid.className = "picker__grid";
+  for (var i=0; i<16; i++){
+    (function(idx){
+      var sw = document.createElement("button");
+      sw.type = "button";
+      sw.className = "picker__sw" + (d.group === idx ? " picker__sw--valgt" : "");
+      sw.style.background = palette(idx).seat;
+      sw.style.borderColor = palette(idx).line;
+      sw.title = "Gruppe " + (idx+1);
+      sw.setAttribute("aria-label", "Gruppe " + (idx+1));
+      sw.addEventListener("click", function(){
+        d.group = idx;
+        closePicker(); render(); save();
+      });
+      grid.appendChild(sw);
+    })(i);
+  }
+  box.appendChild(grid);
+
+  var row = document.createElement("div");
+  row.className = "picker__row";
+  var ny = document.createElement("button");
+  ny.className = "btn btn--quiet";
+  ny.type = "button";
+  ny.textContent = "Egen gruppe";
+  ny.addEventListener("click", function(){
+    d.group = nextFreeGroup(state.room.filter(function(x){ return x.id !== d.id; }));
+    closePicker(); render(); save();
+  });
+  var lukk = document.createElement("button");
+  lukk.className = "btn btn--quiet";
+  lukk.type = "button";
+  lukk.textContent = "Behold";
+  lukk.addEventListener("click", closePicker);
+  row.appendChild(ny); row.appendChild(lukk);
+  box.appendChild(row);
+
+  document.body.appendChild(box);
+  picker = box;
+  var r = anchor.getBoundingClientRect();
+  var w = 212, h2 = box.offsetHeight || 120;
+  var vw = window.innerWidth || 1000, vh = window.innerHeight || 800;
+  var left = clamp(r.left + r.width/2 - w/2, 8, Math.max(8, vw - w - 8));
+  var top = r.bottom + 8;
+  if (top + h2 > vh - 8) top = Math.max(8, r.top - h2 - 8);
+  box.style.left = left + "px";
+  box.style.top = top + "px";
+}
+document.addEventListener("pointerdown", function(ev){
+  if (!picker) return;
+  if (ev.target.closest(".picker") || ev.target.closest(".seat")) return;
+  closePicker();
+}, true);
+
+/* ============ Avlesning ============ */
+function renderSwatches(){
+  var box = $("swatches");
+  box.innerHTML = "";
+  for (var i=0; i<16; i++){
+    var sw = document.createElement("i");
+    sw.style.background = palette(i).line;
+    box.appendChild(sw);
+  }
+}
+function describeGroups(sizes){
+  if (!sizes.length) return "ingen makkergrupper";
+  var by = {};
+  sizes.forEach(function(s){ by[s] = (by[s]||0) + 1; });
+  var parts = Object.keys(by).map(Number).sort(function(a,b){ return b-a; })
+    .map(function(s){ return by[s] + " à " + s; });
+  return sizes.length + " makkergrupper (" + parts.join(", ") + ")";
+}
+function renderReadout(){
+  var placed = Object.keys(state.chart).length;
+  var out = [];
+  out.push("<b>" + placed + "</b> elever · " + describeGroups(diag.groupSizes)
+    + " · " + diag.parSizes.length + " makkerpar");
+  if (diag.singles) out.push("<b>" + diag.singles + "</b> sitter alene i makkerparet sitt, men har paret foran eller bak i gruppa");
+  if (diag.lonelyGroups) out.push('<span class="warn"><b>' + diag.lonelyGroups + "</b> makkergruppe med bare én elev</span>");
+  if (state.history.length){
+    out.push(diag.repeats.length
+      ? '<span class="warn"><b>' + diag.repeats.length + "</b> gjentatte makkere: " + escapeHtml(diag.repeats.join(", ")) + "</span>"
+      : "<b>ingen</b> gjentatte makkere");
+    out.push(diag.groupRepeats.length
+      ? "<b>" + diag.groupRepeats.length + "</b> par som har vært i samme gruppe før: "
+        + escapeHtml(diag.groupRepeats.slice(0,6).join(", ")) + (diag.groupRepeats.length > 6 ? " …" : "")
+      : "<b>ingen</b> gjentatte gruppekamerater");
+    out.push("<b>" + diag.moved + "</b> av " + diag.known + " kjente elever byttet sone fram/bak · <b>"
+      + diag.sameSeat + "</b> sitter på samme plass som sist");
+  } else {
+    out.push("ingen historikk ennå — denne plasseringen er helt tilfeldig");
+    out.push("lagre kartet når klassen har sittet slik, så tas det hensyn til neste gang");
+  }
+  $("readout").innerHTML = out.join("<br>");
+}
+function updateCapacity(){
+  var L = lay(state.layout);
+  var groups = groupsOf(state.room || [], L);
+  var n = state.students.length;
+  var txt = state.room.length + " bord i " + groups.length + " makkergrupper";
+  if (n){
+    txt = n + " elever på " + state.room.length + " bord i " + groups.length + " makkergrupper";
+    if (n > state.room.length) txt += " — " + (n - state.room.length) + " for lite";
+    else if (n % 2) txt += " · ett par får bare én elev";
+  }
+  $("capacity").textContent = txt;
+}
+
+function renderHistory(){
+  var ul = $("histList");
+  ul.innerHTML = "";
+  if (!state.history.length){
+    var li0 = document.createElement("li");
+    li0.innerHTML = '<span class="empty">Ingen lagrede kart ennå.</span>';
+    ul.appendChild(li0);
+    return;
+  }
+  state.history.slice().reverse().forEach(function(entry){
+    var li = document.createElement("li");
+    var meta = document.createElement("div");
+    meta.className = "meta";
+    meta.innerHTML = "<b>" + escapeHtml(entry.label) + "</b><span>" + entry.date + " · "
+      + Object.keys(entry.seats).length + " elever</span>";
+    li.appendChild(meta);
+
+    var load = document.createElement("button");
+    load.className = "btn btn--quiet";
+    load.textContent = "Hent";
+    load.addEventListener("click", function(){
+      var L2 = historyLayout(entry);
+      state.layout.rows = L2.rows; state.layout.desks = L2.desks;
+      state.layout.par = L2.par; state.layout.depth = L2.depth;
+      var rom = normRoom(entry.room);
+      state.room = rom || defaultRoom(lay(state.layout));
+      syncLayoutInputs();
+      state.chart = Object.assign({}, normaliseSeats(entry));
+      state.locks = {};
+      selected = null;
+      render(); save();
+      toast("Hentet inn «" + entry.label + "».");
+    });
+    li.appendChild(load);
+
+    var del = document.createElement("button");
+    del.className = "btn btn--quiet btn--danger";
+    del.textContent = "Slett";
+    del.addEventListener("click", function(){
+      state.history = state.history.filter(function(e){ return e.id !== entry.id; });
+      render(); save();
+    });
+    li.appendChild(del);
+    ul.appendChild(li);
+  });
+}
+
+/* ============ Lagring ============ */
+function save(){
+  if (!storageOK) return;
+  store.active = state.id;
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(store)); }
+  catch (e){ storageOK = false; noteStorage(); }
+}
+function load(){
+  var raw = null;
+  try { raw = localStorage.getItem(STORE_KEY); }
+  catch (e){ storageOK = false; }
+  var data = null;
+  if (raw){ try { data = JSON.parse(raw); } catch (e){} }
+  adoptStore(data);
+}
+
+function normaliseClass(obj, fallbackName){
+  var c = newClass((obj && obj.name) || fallbackName || "Klasse");
+  if (!obj) return c;
+  if (obj.id) c.id = obj.id;
+  if (Array.isArray(obj.students)) c.students = obj.students.slice();
+  if (Array.isArray(obj.forbidden)) c.forbidden = obj.forbidden.slice();
+  if (obj.weights) Object.assign(c.weights, obj.weights);
+  if (Array.isArray(obj.history)) c.history = obj.history.slice();
+  var chart = obj.chart ? Object.assign({}, obj.chart) : {};
+  var locks = obj.locks ? Object.assign({}, obj.locks) : {};
+  var l = obj.layout;
+  if (l){
+    if (l.desks){
+      c.layout.rows = l.rows || c.layout.rows;
+      c.layout.desks = l.desks;
+      c.layout.par = l.par || c.layout.par;
+      c.layout.depth = l.depth || c.layout.depth;
+    } else if (l.groups && l.seats){
+      c.layout.rows = l.rows || 4;
+      c.layout.desks = l.groups * l.seats;
+      c.layout.par = l.seats;
+      c.layout.depth = Math.max(1, Math.round((l.cluster || l.seats) / l.seats));
+      var conv = {};
+      Object.keys(chart).forEach(function(id){
+        var m = /^r(\d+)g(\d+)s(\d+)$/.exec(id);
+        if (m) conv[seatId(+m[1], (+m[2])*l.seats + (+m[3]))] = chart[id];
+      });
+      chart = conv; locks = {};
+    }
+    if (typeof l.flip === "boolean") c.layout.flip = l.flip;
+    if (typeof l.snu === "boolean") c.layout.snu = l.snu;
+  }
+  c.room = normRoom(obj.room);
+  c.chart = chart; c.locks = locks;
+  return c;
+}
+
+/* slår sammen to utgaver av samme klasse uten å miste noe:
+   historikken blir unionen, og innholdet beholdes fra den som har noe */
+function mergeClass(gammel, ny){
+  var seen = {}, hist = [];
+  gammel.history.concat(ny.history).forEach(function(h){
+    if (!h || !h.id || seen[h.id]) return;
+    seen[h.id] = true; hist.push(h);
+  });
+  hist.sort(function(a,b){ return (parseInt(a.id,10) || 0) - (parseInt(b.id,10) || 0); });
+  gammel.history = hist;
+  if (!gammel.students.length && ny.students.length){
+    gammel.students = ny.students;
+    gammel.forbidden = ny.forbidden;
+    gammel.layout = ny.layout;
+    gammel.room = ny.room;
+    gammel.chart = ny.chart;
+    gammel.locks = ny.locks;
+    gammel.weights = ny.weights;
+  }
+  return gammel;
+}
+
+/* legger klasser inn i butikken; like klasser slås sammen */
+function absorb(klasser){
+  var nye = 0, slaatt = 0, kart = 0;
+  klasser.forEach(function(c){
+    var treff = null;
+    store.classes.forEach(function(x){
+      if (x.id === c.id) treff = x;
+    });
+    if (!treff){
+      store.classes.forEach(function(x){
+        if (!treff && x.name === c.name && x.students.join("|") === c.students.join("|")) treff = x;
+      });
+    }
+    if (treff){
+      var foer = treff.history.length;
+      mergeClass(treff, c);
+      kart += treff.history.length - foer;
+      slaatt++;
+    } else {
+      store.classes.push(c); nye++; kart += c.history.length;
+    }
+  });
+  return { nye:nye, slaatt:slaatt, kart:kart };
+}
+
+/* tomme klasser fra en fersk fil skal ikke stå igjen etter en import */
+function ryddTommeKlasser(){
+  var med = store.classes.filter(function(c){ return c.students.length || c.history.length; });
+  if (med.length) store.classes = med;
+}
+
+/* ser etter data lagret av tidligere versjoner under andre nøkler */
+function migrerGamleNokler(){
+  var funnet = [];
+  try {
+    for (var i=0; i<localStorage.length; i++){
+      var k = localStorage.key(i);
+      if (!k || k === STORE_KEY || k.indexOf("klassekart") !== 0) continue;
+      var d = null;
+      try { d = JSON.parse(localStorage.getItem(k)); } catch (e){ continue; }
+      if (!d) continue;
+      if (Array.isArray(d.classes)) d.classes.forEach(function(c, n){ funnet.push(normaliseClass(c, "Klasse " + (n+1))); });
+      else if (d.students || d.chart || d.history) funnet.push(normaliseClass(d, "Klassen min"));
+    }
+  } catch (e){}
+  if (!funnet.length) return 0;
+  var res = absorb(funnet);
+  if (!res.nye && !res.kart) return 0;
+  ryddTommeKlasser();
+  var keep = store.classes.filter(function(c){ return c.id === state.id; })[0];
+  state = keep || store.classes[0];
+  store.active = state.id;
+  save();
+  return res.nye + res.kart;
+}
+
+function tomButikk(){
+  return store.classes.every(function(c){ return !c.students.length && !c.history.length; });
+}
+function visOverforing(){
+  $("carryover").hidden = !(tomButikk() && !carryHidden);
+}
+var carryHidden = false;
+
+function adoptStore(data){
+  store.classes = [];
+  if (data && Array.isArray(data.classes) && data.classes.length){
+    store.classes = data.classes.map(function(c, i){ return normaliseClass(c, "Klasse " + (i+1)); });
+    store.active = data.active;
+  } else if (data && (data.students || data.chart || data.history)){
+    store.classes = [normaliseClass(data, "Klassen min")];
+  }
+  if (!store.classes.length) store.classes = [newClass("Klassen min")];
+  var found = store.classes.filter(function(c){ return c.id === store.active; })[0];
+  state = found || store.classes[0];
+  store.active = state.id;
+}
+
+function switchClass(id){
+  var c = store.classes.filter(function(x){ return x.id === id; })[0];
+  if (!c) return;
+  state = c; store.active = c.id;
+  selected = null; closePicker();
+  fillInputs(); render(); save();
+}
+function addClass(c, quiet){
+  store.classes.push(c);
+  state = c; store.active = c.id;
+  selected = null; closePicker();
+  fillInputs(); render(); save();
+  if (!quiet) toast("Opprettet «" + c.name + "».");
+}
+function renderClassSelect(){
+  var sel = $("classSelect");
+  sel.innerHTML = "";
+  store.classes.forEach(function(c){
+    var o = document.createElement("option");
+    o.value = c.id;
+    o.textContent = c.name + " (" + c.students.length + ")";
+    if (c.id === state.id) o.selected = true;
+    sel.appendChild(o);
+  });
+  $("btnDeleteClass").disabled = store.classes.length < 2;
+  $("btnDeleteClass").style.opacity = store.classes.length < 2 ? .4 : 1;
+}
+
+function noteStorage(){
+  $("storageNote").textContent = storageOK
+    ? "Alle klassene lagres automatisk i nettleseren på denne enheten. «Eksporter fil» og «Kopier data» tar med alt — bruk dem når du går over til en ny versjon av fila."
+    : "Denne nettleseren tillater ikke automatisk lagring her. Eksporter en fil før du lukker, og importer den neste gang.";
+}
+
+function saveChart(){
+  if (!Object.keys(state.chart).length){ toast("Ingen elever å lagre."); return; }
+  var label = ($("histLabel").value || "").trim() || ("Kart " + todayLabel());
+  state.history.push({
+    id: Date.now() + "-" + Math.random().toString(36).slice(2,7),
+    label: label,
+    date: todayLabel(),
+    layout: { rows:state.layout.rows, desks:state.layout.desks, par:state.layout.par, depth:state.layout.depth },
+    room: JSON.parse(JSON.stringify(state.room || [])),
+    seats: Object.assign({}, state.chart)
+  });
+  $("histLabel").value = "";
+  render(); save();
+  toast("Lagret som «" + label + "».");
+}
+
+/* ============ Inndata ============ */
+function parseStudents(){
+  state.students = $("students").value
+    .split("\n").map(function(s){ return s.trim(); })
+    .filter(function(s){ return s.length; })
+    .filter(function(s,i,arr){ return arr.indexOf(s) === i; });
+}
+function parseForbidden(){
+  state.forbidden = $("forbidden").value.split("\n").map(function(line){
+    var parts = line.split(";").map(function(p){ return p.trim(); }).filter(Boolean);
+    return parts.length >= 2 ? [parts[0], parts[1]] : null;
+  }).filter(Boolean);
+}
+function syncLayoutInputs(){
+  $("rows").value = state.layout.rows;
+  $("desks").value = state.layout.desks;
+  $("par").value = state.layout.par;
+  $("depth").value = state.layout.depth;
+  $("flip").checked = state.layout.flip;
+}
+function readLayout(){
+  state.layout.rows = clamp(+$("rows").value || 1, 1, 12);
+  state.layout.desks = clamp(+$("desks").value || 1, 1, 16);
+  state.layout.par = clamp(+$("par").value || 1, 1, 4);
+  state.layout.depth = clamp(+$("depth").value || 1, 1, 4);
+  state.layout.flip = $("flip").checked;
+}
+
+/* ============ Fil ============ */
+function exportFile(){
+  store.active = state.id;
+  var blob = new Blob([JSON.stringify(store, null, 2)], { type:"application/json" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "klassekart-" + new Date().toISOString().slice(0,10) + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+}
+function importFile(file){
+  var reader = new FileReader();
+  reader.onload = function(){
+    var data;
+    try { data = JSON.parse(reader.result); }
+    catch (e){ toast("Filen kunne ikke leses."); return; }
+    innlemm(data);
+  };
+  reader.readAsText(file);
+}
+/* felles vei inn for fil, innliming og dra-og-slipp */
+function innlemm(data){
+  var incoming = (data && Array.isArray(data.classes) && data.classes.length)
+    ? data.classes.map(function(c, i){ return normaliseClass(c, "Klasse " + (i+1)); })
+    : (data && (data.students || data.chart || data.history))
+      ? [normaliseClass(data, "Importert klasse")]
+      : null;
+  if (!incoming){ toast("Fant ingen klassekart-data i det du limte inn."); return false; }
+
+  var res = absorb(incoming);
+  ryddTommeKlasser();
+  var keep = store.classes.filter(function(c){ return c.id === state.id; })[0];
+  state = keep || store.classes[0];
+  store.active = state.id;
+  carryHidden = true;
+  fillInputs(); render(); save();
+  toast("Hentet inn " + res.nye + " ny(e) klasse(r), slo sammen " + res.slaatt
+    + " og la til " + res.kart + " kart i historikken.");
+  return true;
+}
+
+function kopierData(){
+  store.active = state.id;
+  var tekst = JSON.stringify(store);
+  var ok = function(){ toast("Dataene er kopiert. Lim dem inn i den nye fila."); };
+  if (navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(tekst).then(ok, function(){ kopierReserve(tekst, ok); });
+  } else kopierReserve(tekst, ok);
+}
+function kopierReserve(tekst, ok){
+  var ta = document.createElement("textarea");
+  ta.value = tekst;
+  ta.style.position = "fixed"; ta.style.top = "-2000px";
+  document.body.appendChild(ta);
+  ta.select();
+  var klart = false;
+  try { klart = document.execCommand("copy"); } catch (e){}
+  document.body.removeChild(ta);
+  if (klart) ok(); else toast("Fikk ikke kopiert. Bruk «Eksporter fil» i stedet.");
+}
+
+function fillInputs(){
+  renderClassSelect();
+  $("students").value = state.students.join("\n");
+  $("forbidden").value = state.forbidden.map(function(p){ return p[0] + "; " + p[1]; }).join("\n");
+  syncLayoutInputs();
+  $("wNeighbor").value = state.weights.neighbor; $("wNeighborVal").textContent = state.weights.neighbor;
+  $("wRow").value = state.weights.row; $("wRowVal").textContent = state.weights.row;
+  $("wSame").value = state.weights.same; $("wSameVal").textContent = state.weights.same;
+}
+
+/* ============ Kobling ============ */
+$("classSelect").addEventListener("change", function(){ switchClass(this.value); });
+$("btnNewClass").addEventListener("click", function(){
+  var navn = window.prompt("Navn på den nye klassen:", "Klasse " + (store.classes.length + 1));
+  if (navn === null) return;
+  addClass(newClass(navn.trim() || "Ny klasse"));
+});
+$("btnRenameClass").addEventListener("click", function(){
+  var navn = window.prompt("Nytt navn på klassen:", state.name);
+  if (navn === null) return;
+  state.name = navn.trim() || state.name;
+  renderClassSelect(); render(); save();
+});
+$("btnCopyClass").addEventListener("click", function(){
+  var kopi = normaliseClass(JSON.parse(JSON.stringify(state)), state.name);
+  kopi.id = uid();
+  kopi.name = state.name + " (kopi)";
+  addClass(kopi, true);
+  toast("Kopierte til «" + kopi.name + "».");
+});
+$("btnDeleteClass").addEventListener("click", function(){
+  if (store.classes.length < 2){ toast("Du må ha minst én klasse."); return; }
+  if (!window.confirm("Slette «" + state.name + "» med elevliste og historikk? Dette kan ikke angres.")) return;
+  var navn = state.name;
+  store.classes = store.classes.filter(function(c){ return c.id !== state.id; });
+  state = store.classes[0]; store.active = state.id;
+  selected = null; closePicker();
+  fillInputs(); render(); save();
+  toast("Slettet «" + navn + "».");
+});
+$("students").addEventListener("input", function(){ parseStudents(); renderClassSelect(); render(); save(); });
+$("forbidden").addEventListener("input", function(){ parseForbidden(); save(); });
+["rows","desks","par","depth","flip"].forEach(function(id){
+  $(id).addEventListener("change", function(){
+    var foer = state.layout.par + "x" + state.layout.depth;
+    readLayout();
+    if ((id === "par" || id === "depth") && foer !== state.layout.par + "x" + state.layout.depth)
+      state.room = defaultRoom(lay(state.layout));
+    selected = null; closePicker();
+    render(); save();
+  });
+});
+[["wNeighbor","neighbor"],["wRow","row"],["wSame","same"]].forEach(function(p){
+  $(p[0]).addEventListener("input", function(){
+    state.weights[p[1]] = +this.value;
+    $(p[0]+"Val").textContent = this.value;
+    save();
+  });
+});
+$("btnEdit").addEventListener("click", function(){
+  edit.on = !edit.on;
+  selected = null; closePicker();
+  render();
+  if (edit.on) toast("Dra bordene dit du vil ha dem. Naboene flytter seg.");
+});
+$("btnMirror").addEventListener("click", function(){
+  state.layout.snu = !state.layout.snu;
+  render(); save();
+  toast(state.layout.snu
+    ? "Navnene står nå snudd — legg arket med tavla nærmest deg."
+    : "Navnene står normalt igjen.");
+});
+$("btnAddDesk").addEventListener("click", addDesk);
+$("btnResetRoom").addEventListener("click", resetRoom);
+$("btnGenerate").addEventListener("click", function(){ generate(); save(); });
+$("btnSave").addEventListener("click", saveChart);
+$("btnSave2").addEventListener("click", saveChart);
+$("btnPrint").addEventListener("click", function(){ closePicker(); window.print(); });
+$("btnExport").addEventListener("click", exportFile);
+$("btnCopyData").addEventListener("click", kopierData);
+$("btnPasteData").addEventListener("click", aapnePaste);
+$("btnCarryImport").addEventListener("click", function(){ $("fileInput").click(); });
+$("btnCarryPaste").addEventListener("click", aapnePaste);
+$("btnCarryHide").addEventListener("click", function(){ carryHidden = true; visOverforing(); });
+$("btnPasteCancel").addEventListener("click", function(){ $("pasteModal").hidden = true; });
+$("btnPasteOk").addEventListener("click", function(){
+  var tekst = $("pasteBox").value.trim();
+  if (!tekst){ toast("Lim inn dataene først."); return; }
+  var data = null;
+  try { data = JSON.parse(tekst); } catch (e){ toast("Teksten er ikke gyldige data."); return; }
+  if (innlemm(data)) $("pasteModal").hidden = true;
+});
+function aapnePaste(){
+  $("pasteBox").value = "";
+  $("pasteModal").hidden = false;
+  $("pasteBox").focus();
+}
+
+/* dra en JSON-fil inn i vinduet */
+["dragenter","dragover"].forEach(function(t){
+  window.addEventListener(t, function(ev){
+    if (!ev.dataTransfer) return;
+    ev.preventDefault();
+    document.body.classList.add("dragover");
+  });
+});
+["dragleave","dragend"].forEach(function(t){
+  window.addEventListener(t, function(){ document.body.classList.remove("dragover"); });
+});
+window.addEventListener("drop", function(ev){
+  document.body.classList.remove("dragover");
+  if (!ev.dataTransfer || !ev.dataTransfer.files || !ev.dataTransfer.files.length) return;
+  ev.preventDefault();
+  importFile(ev.dataTransfer.files[0]);
+});
+$("btnImport").addEventListener("click", function(){ $("fileInput").click(); });
+$("fileInput").addEventListener("change", function(){ if (this.files[0]) importFile(this.files[0]); this.value = ""; });
+
+/* ============ Start ============ */
+load();
+var hentet = migrerGamleNokler();
+ensureRoom();
+fillInputs();
+parseStudents();
+parseForbidden();
+noteStorage();
+render();
+if (hentet) toast("Fant data fra en tidligere versjon og hentet den inn.");
+})();
+</script>
+</body>
+</html>
